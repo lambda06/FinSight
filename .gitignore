@@ -1,0 +1,89 @@
+# ============================================================
+# FinSight – .gitignore
+# ============================================================
+
+# ----- Source Data (keep out of version control) -----
+data/
+
+# ----- Data & Assessment Files (keep out of version control) -----
+*.xlsx
+*.csv
+*.docx
+*.docx.txt
+*.pdf
+*.parquet
+*.json.gz
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+MANIFEST
+
+# ----- Virtual Environments -----
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# ----- Jupyter Notebooks -----
+.ipynb_checkpoints/
+*.ipynb
+
+# ----- IDEs & Editors -----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ----- Testing & Coverage -----
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ----- Generated Output (charts) -----
+output/
+!output/.gitkeep
+
+# ----- Audit Logs -----
+logs/
+!logs/.gitkeep
+
+# ----- Logs & Temp -----
+*.log
+*.tmp
+*.bak
+*.orig
+
+# ----- OS -----
+Desktop.ini
+ehthumbs.db

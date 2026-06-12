@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinSight — Tabular RAG Dashboard</title>
+    <!-- Google Fonts: Outfit (modern sans) and JetBrains Mono (monospace) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- SIDEBAR: User Selector and Profile Stats -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">📈</span>
+                    <h1>FinSight</h1>
+                </div>
+                <p class="tagline">Tabular RAG Pipeline</p>
+            </div>
+            
+            <div class="section-title">Select User Profile</div>
+            <div class="users-list" id="users-list">
+                <!-- Loaded dynamically via JavaScript -->
+                <div class="loading-spinner">Loading users...</div>
+            </div>
+            
+            <div class="profile-stats-container" id="profile-stats" style="display: none;">
+                <div class="section-title">Active Profile Overview</div>
+                <div class="stats-card">
+                    <div class="stat-row">
+                        <span class="stat-label">Date Range</span>
+                        <span class="stat-value" id="stat-date-range">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Transactions</span>
+                        <span class="stat-value" id="stat-transactions">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg. Monthly Spend</span>
+                        <span class="stat-value" id="stat-avg-spend">-</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- MAIN PANEL: Chat and Visualizations -->
+        <main class="main-panel">
+            <header class="main-header">
+                <div class="header-user-info">
+                    <span class="status-indicator"></span>
+                    <h2 id="active-user-name">Select a user profile to begin</h2>
+                </div>
+                <div class="system-status">
+                    <span class="badge badge-success">🛡️ Guardrails Active</span>
+                    <span class="badge badge-info">💾 In-Memory Cache Ready</span>
+                </div>
+            </header>
+            
+            <!-- CONVERSATION / DISPLAY AREA -->
+            <section class="chat-container" id="chat-container">
+                <div class="welcome-message" id="welcome-msg">
+                    <div class="welcome-icon">💬</div>
+                    <h3>Welcome to FinSight Financial Intelligence Dashboard</h3>
+                    <p>Select a user profile on the left, then enter natural language queries. The RAG pipeline will retrieve relevant summaries, run input guardrails, query the LLM model, execute visualizations, and analyze safety indicators.</p>
+                    <div class="query-suggestions">
+                        <div class="suggestion-tag" onclick="useSuggestion('What did I spend the most on last month?')">"What did I spend the most on last month?"</div>
+                        <div class="suggestion-tag" onclick="useSuggestion('Show me my spending trend over time.')">"Show me my spending trend over time."</div>
+                        <div class="suggestion-tag" onclick="useSuggestion('Am I saving money each month?')">"Am I saving money each month?"</div>
+                    </div>
+                </div>
+                <!-- Chat responses dynamically inserted here -->
+            </section>
+            
+            <!-- INPUT FOOTER -->
+            <footer class="input-footer">
+                <form id="query-form" class="query-form">
+                    <input type="text" id="query-input" placeholder="Ask a financial question about the active user..." autocomplete="off" disabled>
+                    <button type="submit" id="send-button" disabled>
+                        <span>Analyze</span>
+                        <span class="btn-icon">🚀</span>
+                    </button>
+                </form>
+            </footer>
+        </main>
+    </div>
+    
+    <!-- App Controller -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
