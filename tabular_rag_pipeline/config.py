@@ -15,10 +15,9 @@ LOG_DIR   = BASE_DIR / "logs"                     # FinSight/logs/
 
 DATA_FILE = DATA_DIR / "assessment_transaction_data.xlsx"
 
-PRIMARY_MODEL  = "openrouter/free"                   # Let OpenRouter route to the best available free model with tools
+PRIMARY_MODEL  = "amazon.nova-lite-v1:0"   # New, fast, cheap Amazon Nova Lite model
 FALLBACK_MODELS = [
-    "google/gemma-4-31b-it:free",                     # High-quality Gemma model supporting tool calling
-    "meta-llama/llama-3.3-70b-instruct:free",         # Powerful Llama fallback supporting tool calling
+    "amazon.nova-micro-v1:0",              # Amazon Nova Micro fallback
 ]
 
 LLM_TIMEOUT_SECONDS = 30    # Gemini BYOK: 2-5s | Free tier: up to 30s
