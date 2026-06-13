@@ -13,7 +13,10 @@ DATA_DIR  = BASE_DIR / "data"                     # FinSight/data/
 OUTPUT_DIR = BASE_DIR / "output"                  # FinSight/output/
 LOG_DIR   = BASE_DIR / "logs"                     # FinSight/logs/
 
-DATA_FILE = DATA_DIR / "assessment_transaction_data.xlsx"
+import os
+# If S3_DATA_URI is set, use it. Otherwise, fallback to local path.
+S3_DATA_URI = os.getenv("S3_DATA_URI")
+DATA_FILE = S3_DATA_URI if S3_DATA_URI else DATA_DIR / "assessment_transaction_data.xlsx"
 
 PRIMARY_MODEL  = "amazon.nova-lite-v1:0"   # New, fast, cheap Amazon Nova Lite model
 FALLBACK_MODELS = [

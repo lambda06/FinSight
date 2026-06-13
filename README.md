@@ -3,7 +3,7 @@
 > **A production-grade Retrieval-Augmented Generation pipeline** that answers natural language questions about personal transaction data — complete with AI-generated charts, safety guardrails, and resilient LLM integration.
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
-[![OpenRouter](https://img.shields.io/badge/LLM-OpenRouter-orange.svg)](https://openrouter.ai)
+[![AWS Bedrock](https://img.shields.io/badge/LLM-AWS%20Bedrock-orange.svg)](https://aws.amazon.com/bedrock/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -43,12 +43,13 @@ python -m venv .venv
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Configure API key (free at openrouter.ai)
+# 3. Configure AWS Credentials
 cp .env.example .env
-# Edit .env and set: OPENROUTER_API_KEY=your_key_here
+# Edit .env and set: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION
 
 # 4. Add your transaction data
 # Place assessment_transaction_data.xlsx in data/
+# (Optional) Store data remotely by uploading to Amazon S3 and setting S3_DATA_URI in .env
 
 # 5. Run the CLI Demo
 python demo.py
@@ -58,7 +59,7 @@ python server.py
 # Open http://localhost:8000 in your browser!
 ```
 
-> **Get a free API key** at [openrouter.ai](https://openrouter.ai) — the free tier is sufficient to run all demo queries and dashboard operations.
+> **AWS Bedrock Integration**: This app relies on Amazon Bedrock. Make sure you have requested access to the Amazon Nova models in your AWS console.
 
 ---
 
@@ -98,13 +99,12 @@ User Query
 │          │   ├─ User profile (from cache)               │
 │          │   ├─ Pre-computed data summaries             │
 │          │   └─ Few-shot examples (last 3 Q&As)        │
-│  Stage 5 │ LLM Call               → LLMClient           │
-│          │   ├─ Primary model (GPT / Gemini)            │
+│  Stage 5 │ LLM & Tool Loop        → Multi-Turn ReAct    │
+│  & 6     │   ├─ Primary model (Amazon Bedrock / Nova)   │
+│          │   ├─ Loop: LLM → Tool Execution → LLM        │
 │          │   ├─ Exponential backoff retry               │
 │          │   ├─ Model fallback chain                    │
 │          │   └─ Circuit breaker (stops hammering)       │
-│  Stage 6 │ Tool Execution         → VisualizationEngine │
-│          │   LLM decides which chart(s) to generate     │
 │  Stage 7 │ Output Guardrails      → GuardrailEngine     │
 │          │   ├─ Hallucination check (number comparison) │
 │          │   ├─ Toxicity filter                         │
@@ -172,10 +172,13 @@ The LLM **decides** which visualization fits the query by reading tool descripti
 - **Transparent**: Every blocking rule is readable code, not a black box
 - **Trade-off acknowledged**: Lower recall on novel attack patterns vs. an ML classifier
 
-### 5. Why OpenRouter instead of calling OpenAI/Gemini directly?
-OpenRouter gives model-agnostic access via a single OpenAI-compatible API. The primary model can be swapped without code changes. Free tier models (Gemini Flash, Qwen, DeepSeek) are sufficient for prototyping; production can upgrade by changing one config line.
+### 5. Why Amazon Bedrock instead of calling OpenAI/Gemini directly?
+Amazon Bedrock provides a highly secure, enterprise-grade, serverless LLM environment. By using `boto3` to call models like Amazon Nova, FinSight ensures all data stays within the AWS ecosystem without sending sensitive financial data to public APIs.
 
-### 6. Why in-memory cache with Redis-mirrored key naming?
+### 6. Why Multi-Turn ReAct?
+Instead of a single LLM call, FinSight uses a **Multi-Turn ReAct Loop**. When the AI needs a chart, it pauses, executes the visualization tool, reads the result, and *then* generates the final conversational summary. This allows the AI to strictly rely on Chain-of-Thought reasoning.
+
+### 7. Why in-memory cache with Redis-mirrored key naming?
 The `CacheManager` uses Redis key conventions (`user:{id}:profile`) so it's a drop-in swap for production. During development, an in-memory dict avoids the Redis dependency while keeping the interface identical.
 
 ---
@@ -259,7 +262,10 @@ python tests/smoke_test.py
 
 | Variable | Required | Description |
 |---|---|---|
-| `OPENROUTER_API_KEY` | ✅ Yes | Get free at [openrouter.ai](https://openrouter.ai) |
+| `AWS_ACCESS_KEY_ID` | ✅ Yes* | Your AWS Access Key. (*Not required if running on an EC2 instance with an IAM Role attached) |
+| `AWS_SECRET_ACCESS_KEY` | ✅ Yes* | Your AWS Secret Key. (*Not required if running on an EC2 instance with an IAM Role attached) |
+| `AWS_DEFAULT_REGION` | ✅ Yes | The AWS region where your Bedrock models are enabled (e.g., `us-east-1` or `us-west-2`) |
+| `S3_DATA_URI` | ❌ No | Optional S3 path (e.g., `s3://my-bucket/data.xlsx`) to load data remotely. If omitted, falls back to the local `data/` folder. |
 
 ---
 
