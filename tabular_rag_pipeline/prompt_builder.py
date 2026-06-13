@@ -124,7 +124,7 @@ RULES (follow strictly):
 - Interpret temporal phrases like "last month" relative to the user's data range, not today's date.
 - When numbers are available in the data summaries, use them exactly — do not estimate.
 - Always be encouraging and constructive when discussing spending habits.
-- When calling a visualization tool to draw a chart, you MUST also provide a conversational text response explaining the key insights or summarising what the chart displays. Never leave the text response empty.
+- When calling a visualization tool to draw a chart, you MUST also provide a conversational text response explaining the key insights or summarising what the chart displays. It is fine to wait for the tool execution result before providing the final summary.
 - The current user's ID is: {user_id}"""
 
     def _section_user_context(self, profile: dict) -> str:

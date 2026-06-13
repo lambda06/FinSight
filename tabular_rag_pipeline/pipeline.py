@@ -128,52 +128,86 @@ class TransactionRAGPipeline:
         messages       = self.builder.build(user_id, clean_prompt, profile, query_history)
         data_summaries = self.builder.get_data_summaries(user_id)
 
-        # ── Stage 5: LLM call ─────────────────────────────────────────────────
-        try:
-            llm_result = self.llm.chat_completion(messages, tools=TOOL_SCHEMAS)
-        except (LLMUnavailableError, CircuitBreakerOpenError) as e:
-            latency = self._ms(start_time)
-            msg = (
-                "I'm temporarily unable to reach the AI service. "
-                "Please try again in a moment."
-            )
-            self.logger.log(
-                user_id=user_id, prompt=clean_prompt, response=msg,
-                latency_ms=latency, cache_hit=cache_hit,
-                guardrail_flags=input_flags, tool_calls=[],
-                model_used="none", status="llm_error",
-            )
-            return self._error_result(msg, "llm_error", start_time,
-                                      user_name=user_name, cache_hit=cache_hit,
-                                      flags=input_flags)
-
-        response_text = llm_result["text"]
-        model_used    = llm_result["model_used"]
-
-        # ── Stage 6: Execute tool calls (draw charts) ─────────────────────────
+        # ── Stage 5 & 6: LLM call and Tool Execution (Multi-Turn Loop) ────────
+        import re
         viz_paths:  list[str] = []
         tool_names: list[str] = []
         viz_errors: list[str] = []
-
-        for tc in llm_result["tool_calls"]:
-            args = dict(tc["arguments"])
-            args["user_id"] = user_id   # Always use the authenticated user — never trust the LLM's user_id
+        model_used = "none"
+        final_response_text = ""
+        
+        MAX_TURNS = 3
+        turn_count = 0
+        
+        while turn_count < MAX_TURNS:
+            turn_count += 1
+            
             try:
-                path = self.viz.execute_tool_call(tc["function"], args)
-                viz_paths.append(path)
-                tool_names.append(tc["function"])
-            except Exception as e:
-                # Chart failed — log it but don't crash the whole response
-                viz_errors.append(tc["function"])
-                self.logger.log(
-                    user_id=user_id, prompt=clean_prompt,
-                    response=f"[chart_error] {tc['function']}: {e}",
-                    latency_ms=self._ms(start_time), cache_hit=cache_hit,
-                    guardrail_flags=["visualization_failed"], tool_calls=[tc["function"]],
-                    model_used=model_used, status="visualization_failed",
+                llm_result = self.llm.chat_completion(messages, tools=TOOL_SCHEMAS)
+            except (LLMUnavailableError, CircuitBreakerOpenError) as e:
+                print(f"LLM Error Details: {e}")
+                latency = self._ms(start_time)
+                msg = (
+                    "I'm temporarily unable to reach the AI service. "
+                    "Please try again in a moment."
                 )
+                self.logger.log(
+                    user_id=user_id, prompt=clean_prompt, response=msg,
+                    latency_ms=latency, cache_hit=cache_hit,
+                    guardrail_flags=input_flags, tool_calls=[],
+                    model_used="none", status="llm_error",
+                )
+                return self._error_result(msg, "llm_error", start_time,
+                                          user_name=user_name, cache_hit=cache_hit,
+                                          flags=input_flags)
+            
+            model_used = llm_result["model_used"]
+            response_text = llm_result["text"]
+            
+            # Append the assistant's response (and tool calls) to the history
+            if llm_result["tool_calls"] or response_text:
+                assistant_msg = {"role": "assistant", "content": response_text}
+                if llm_result["tool_calls"]:
+                    assistant_msg["tool_calls"] = llm_result["tool_calls"]
+                messages.append(assistant_msg)
+                
+            # If no tool calls were requested, the AI has provided its final answer!
+            if not llm_result["tool_calls"]:
+                final_response_text = response_text
+                break
+                
+            # Otherwise, execute the requested tools and loop again
+            for tc in llm_result["tool_calls"]:
+                args = dict(tc["arguments"])
+                args["user_id"] = user_id
+                try:
+                    path = self.viz.execute_tool_call(tc["function"], args)
+                    viz_paths.append(path)
+                    tool_names.append(tc["function"])
+                    tool_result = f"Successfully generated chart at {path}"
+                except Exception as e:
+                    viz_errors.append(tc["function"])
+                    tool_result = f"Error generating chart: {e}"
+                    self.logger.log(
+                        user_id=user_id, prompt=clean_prompt,
+                        response=f"[chart_error] {tc['function']}: {e}",
+                        latency_ms=self._ms(start_time), cache_hit=cache_hit,
+                        guardrail_flags=["visualization_failed"], tool_calls=[tc["function"]],
+                        model_used=model_used, status="visualization_failed",
+                    )
+                
+                # Append tool result so the LLM can read it on the next turn
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "name": tc["function"],
+                    "content": tool_result
+                })
 
-        # If the LLM only returned a tool call with no text, add a placeholder
+        # Strip out any XML <thinking> tags from the final text
+        response_text = re.sub(r'</?thinking>', '', final_response_text, flags=re.IGNORECASE).strip()
+        
+        # If we hit max turns or the text is still empty, add a fallback
         if not response_text and viz_paths:
             response_text = "I've generated the charts below based on your question."
 
